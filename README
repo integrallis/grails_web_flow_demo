@@ -1,0 +1,6 @@
+
+This is the demo application and example code for showing how to use Spring Web Flow with Grails.
+
+The only part that does not 100% work is nesting the web flow, there is an exception that does occur with hibernate.
+
+
