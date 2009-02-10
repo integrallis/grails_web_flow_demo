@@ -9,7 +9,7 @@
   <body>
     <div class="body">
       <h1>Finish</h1>
-
+      <g:link controller="hotel" action="bookingCart">Start Over</g:link>
     </div>
   </body>
 </html>

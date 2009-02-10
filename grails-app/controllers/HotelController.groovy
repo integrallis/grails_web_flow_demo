@@ -9,13 +9,14 @@ class HotelController {
      def paypalFlow = {
         pay(){
            on("submit") {
-               println "Was it paid - " + params.paid
+               log.info "Was it paid - ${params.paid}"
            }.to "evaluatePayment"
         }
 
         evaluatePayment() {
             action {
-                if (params.paid == 1) {
+                if (params.paid == 'yes') {
+                    conversation.booking.paid = true
                     return paidInFull()
                 } else {
                     return paymentDeclined()
@@ -34,7 +35,7 @@ class HotelController {
         start(){
 
             action{
-                println "start the transaction"
+                log.info "-start the booking-"
                 conversation.booking = null
                 flow.hotel = null
                 return false
@@ -44,16 +45,14 @@ class HotelController {
   
         findHotels{
             on("showHotels") {
-                println "*** show ***"
                 def hotels = Hotel.findAllByNameIlike("%${params.hotelName}%", [max: 10])
-                println "Hotels found - ${hotels}, size - ${hotels.size()}"
+                log.info "Hotels found - ${hotels}, size - ${hotels.size()}"
                 [hotelResults: hotels]
             }.to "hotelListPage"
         }
 
         hotelListPage{
             on("view") {
-                println "view the hotel!!!!"
                 flow.hotel = Hotel.get(params.id)
             }.to "hotelView"
             
@@ -69,17 +68,16 @@ class HotelController {
 
         bookingPage {
             on("proceed") {
-                println "- Save the booking information to the flow scope - "
+                log.info "- Save the booking information to the flow scope - "
                 // save the booking
                 def booking = new Booking(params)
                 booking.hotel = flow.hotel
                 conversation.booking = booking
-                println "The booking - " + flow.booking
             }.to "saveBooking"
             on("cancel").to "start"
         }
 
-        // The default save action
+        // The default save action before custom flows
 //        saveBooking() {
 //            action{
 //                if (flow.booking.validate()) {
@@ -94,8 +92,15 @@ class HotelController {
 
         confirmHotel {
             on("submit") {
-                println "-confirm hotel-"
-                //flow.booking.save()
+                log.info "-confirm hotel-"
+                // persist the data
+                def success = conversation.booking.save();
+                if (!success) {
+                    conversation.booking.validate()
+                    conversation.booking.errors.allErrors.each {
+                        log.info "Errors - ${it}"
+                    }
+                }
             }.to "finish"
             on("cancel").to "start"
         }
@@ -105,14 +110,11 @@ class HotelController {
                 if (!conversation.booking.validate()) {
                     return bookingPage()
                 } else {
-                    println "payment type - " + params.paymentType
-                    println params.paymenType.equals("creditCard")
-                    println params.paymenType == "creditCard"
                     if (params.paymentType == "creditCard") {
-                        println "pay via credit card"
+                        log.info "- Pay Via Credit Card -"
                         return creditcard()
                     } else {
-                        println "pay via paypal"
+                        log.info "pay via paypal"
                         return paypal()
                     }
                 }
